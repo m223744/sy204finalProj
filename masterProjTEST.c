@@ -1,4 +1,6 @@
-/* this is the master project file that we will use to put everything together */
+/* This is our test file to test your milestones! */
+
+
 
 //Required Libraries 
 #include <getopt.h>
@@ -14,11 +16,14 @@
 //Global Variable
 #define MAX_SIZE 1024
 int stealthflag;
+int srcfd;
+char *ogfile;
+
 //Function Prototypes
 int checkopt(int argc, char *argv[], char *file);
-int stealthmodeon();
-void simpSigHandler(int sigNum, char *file);
-int stealthmodeoff();
+int stealthmodeon(int srcfd);
+void simpSigHandler(int sigNum);
+int stealthmodeoff(int srcfd);
 
 //Define Functions
 int checkopt(int argc, char *argv[], char *file){
@@ -30,24 +35,25 @@ int checkopt(int argc, char *argv[], char *file){
                                 return 0;
 			case 's':
 				printf("Stealth Mode\n");
-				stealthmodeon(file);
+				stealthmodeon(srcfd);
 			case 'c':
 				printf("Cat Mode");
-				if(argc > 3){
-					printf("too many arguments");
-                		}
         	}
 	}
 return 0;
 }
 
-void simpSigHandler(int sigNum, char *file){
-        if(sigNum == SIGUSR1 && stealthflag == 0){
-                stealthmodeon(file);
-        }
+void simpSigHandler(int sigNum){
         if(sigNum == SIGUSR1 && stealthflag == 1){
-                stealthmodeoff(file);
+                write(1,"Stealth Mode Disabled\n", 23);
+		stealthmodeoff(srcfd);
+		return;
         }
+	if(sigNum == SIGUSR1 && stealthflag == 0){
+                write(1, "Stealth Mode Enabled\n", 21);
+		stealthmodeon(srcfd);
+        	return;
+	}
 }
 
 // Milestone 0
@@ -57,11 +63,10 @@ void simpSigHandler(int sigNum, char *file){
 // Milestone 2 (Cat function - Reading in data from STDIO until EOF)
 //
 // Milestone 3 (Hiding Executable)
-int stealthmodeon(char *ogfile){
+int stealthmodeon(int srcfd){
         char buff[MAX_SIZE];
         int deletefile = 0;
         int pausePt = 0;
-	int srcfd = open(ogfile, O_RDONLY);
         if(srcfd < 0){
                 perror("Error");
                 return errno;
@@ -70,23 +75,22 @@ int stealthmodeon(char *ogfile){
                 perror("Error");
                 return errno;
         }
-        fprintf(stdout,"Pause Point: netGoat appears in ls listing\n");
-        scanf("%d", &pausePt);
+        //fprintf(stdout,"Pause Point: netGoat appears in ls listing\n");
+        //scanf("%d", &pausePt);
         if((deletefile=unlink(ogfile)) == -1){
                 perror("Error");
                 return errno;
         }
         lseek(srcfd,0,SEEK_SET);
-        fprintf(stdout,"Pause Point: netGoat is still open, but does not appear in ls listings\n");
-        scanf("%d", &pausePt);
+        //fprintf(stdout,"Pause Point: netGoat is still open, but does not appear in ls listings\n");
+        //scanf("%d", &pausePt);
         stealthflag = 1;
         return 0;
 }
 
-int stealthmodeoff(char *ogfile){
+int stealthmodeoff(int srcfd){
         int dstfd = 0;
         char buff[MAX_SIZE];
-	int srcfd = open(ogfile, O_RDONLY);
         dstfd = open("netGoatTEST", O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IXOTH);
         int num = 1;
         while(num!=0){
@@ -97,8 +101,8 @@ int stealthmodeoff(char *ogfile){
                 }
                 write(dstfd,buff,num);
         }
+	close(dstfd);
         stealthflag = 0;
-        close(srcfd);
 	return 0;
 }
 
@@ -110,7 +114,8 @@ int stealthmodeoff(char *ogfile){
 // Milestone 6
 
 int main(int argc, char *argv[]){
-        char *ogfile = argv[0];
+        ogfile = argv[0];
+	srcfd = open(ogfile, O_RDONLY);
 	if(argc==1){
 		printf("Help Info\n");
 		return 0;
