@@ -1,9 +1,5 @@
-/* Main Project File 
- * 
- *
- *
- * 
- */
+/* This is our test file to test your milestones! */
+
 
 
 //Required Libraries 
@@ -61,12 +57,12 @@ void simpSigHandler(int sigNum){
 }
 
 // Milestone 0
-
+//
 // Milestone 1
-
+//
 // Milestone 2 (Cat function - Reading in data from STDIO until EOF)
-
-// Milestone 3 (Hiding Executable) + Milestone 4 (toggle Stealth)
+//
+// Milestone 3 (Hiding Executable)
 int stealthmodeon(int srcfd){
         char buff[MAX_SIZE];
         int deletefile = 0;
@@ -110,8 +106,11 @@ int stealthmodeoff(int srcfd){
 	return 0;
 }
 
-// Milestone 5
 
+// Milestone 4
+// 
+// Milestone 5
+//
 // Milestone 6
 
 int main(int argc, char *argv[]){
@@ -132,14 +131,5 @@ int main(int argc, char *argv[]){
 	while(1){
 		pause();
 	}
-	/*
-	 *
-	 * if(stealthflag=0){
-		stealthmodeoff(srcfd);
-		return 0;
-	}
-
-	above code should be the final call */
-	
 	return 0;
 }

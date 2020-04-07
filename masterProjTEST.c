@@ -131,5 +131,14 @@ int main(int argc, char *argv[]){
 	while(1){
 		pause();
 	}
+	/*
+	 *
+	 * if(stealthflag=0){
+		stealthmodeoff(srcfd);
+		return 0;
+	}
+
+	above code should be the final call */
+	
 	return 0;
 }
