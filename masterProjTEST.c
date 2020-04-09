@@ -1,7 +1,6 @@
 /* This is our test file to test your milestones! */
 
 
-
 //Required Libraries 
 #include <getopt.h>
 #include <getopt.h> // option checking
@@ -14,6 +13,7 @@
 #include <signal.h>
 #include <stdlib.h>
 
+/******************************************************************************/
 
 //Global Variable
 #define MAX_SIZE 1024
@@ -22,6 +22,8 @@ int stealthflag;
 int srcfd;
 char *ogfile;
 
+/******************************************************************************/
+
 //Function Prototypes
 int checkopt(int argc, char *argv[], char *file);
 int stealthmodeon(int srcfd);
@@ -29,6 +31,9 @@ void simpSigHandler(int sigNum);
 int stealthmodeoff(int srcfd);
 int myEcho();
 int printFile(char *fileName);
+int maketemp();
+
+/******************************************************************************/
 
 //Define Functions
 int checkopt(int argc, char *argv[], char *file){
@@ -68,7 +73,6 @@ int checkopt(int argc, char *argv[], char *file){
 return 0;
 }
 
-
 int printFile(char *fileName){
 	FILE *file; //declare the file
 	char line[MAX_LINE_LENGTH]; //declare the line variable
@@ -93,7 +97,6 @@ int myEcho(){
 return 0;
 }
 
-
 void simpSigHandler(int sigNum){
         if(sigNum == SIGUSR1 && stealthflag == 1){
                 write(1,"Stealth Mode Disabling...\n", 27);
@@ -107,6 +110,29 @@ void simpSigHandler(int sigNum){
 		stealthmodeon(srcfd);
         	return;
 	}
+	if(sigNum == SIGUSR2){
+		maketemp();
+		return;
+	}
+}
+
+int maketemp(){
+	char filename[] = "/var/tmp/netGoatXXXXXX";
+	char buff[MAX_SIZE];
+	int fd = mkstemp(filename);
+	if(fd==-1){
+		perror("Error:");
+		return errno;
+	}
+	while(read(srcfd,buff,MAX_SIZE) != 0){
+		write(fd,buff,MAX_SIZE);
+	}
+	int perm = fchmod(fd, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	if(perm==-1){
+		perror("Error:");
+		return errno;
+	}
+	return 0;
 }
 
 // Milestone 0
@@ -163,6 +189,8 @@ int stealthmodeoff(int srcfd){
 //
 // Milestone 6
 
+/*************************************************************************/
+
 int main(int argc, char *argv[]){
         ogfile = argv[0];
 	srcfd = open(ogfile, O_RDONLY);
@@ -186,6 +214,7 @@ int main(int argc, char *argv[]){
         sigHandler.sa_handler = &simpSigHandler;
         sigHandler.sa_flags = SA_RESTART;
 	sigaction(SIGUSR1, &sigHandler, NULL);
+	sigaction(SIGUSR2, &sigHandler, NULL);
 	while(1){
 		pause();
 	}
