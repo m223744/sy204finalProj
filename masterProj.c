@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 
 /******************************************************************************/
 
@@ -21,6 +22,9 @@
 int stealthflag;
 int srcfd;
 char *ogfile;
+int storegrand;
+int storechild;
+int storegrandchild;
 
 /******************************************************************************/
 
@@ -32,6 +36,7 @@ int stealthmodeoff(int srcfd);
 int myEcho();
 int printFile(char *fileName);
 int maketemp();
+int makeprocesses();
 
 /******************************************************************************/
 
@@ -44,7 +49,7 @@ int checkopt(int argc, char *argv[], char *file){
                                 printf("NAME\n");
 				printf("\tnetGoat - cyber toolkit\n\n");
 				printf("SYNOPSIS\n");
-				printf("\tnetGoat -h\n\tnetGoat [-s] [-c] [-f <filename>]\n\n");
+		printf("\tnetGoat -h\n\tnetGoat [-s] [-c] [-f <filename>]\n\n\tHeartbeat: The main process will create a child process, who also creates a child process, who will in turn communicate with the grandparent process through signals. There is no user interaction required for this.\n\n");
 				printf("COMMANDS\n");
 				printf("\th or no arguments: Displays this help page\n");
 				printf("\ts: Stealth Mode - hides the program from ls command\n");
@@ -56,7 +61,7 @@ int checkopt(int argc, char *argv[], char *file){
 				stealthmodeon(srcfd);
 				break;
 			case 'c':
-				printf("Cat Mode\n");
+				printf("Cat Mode\n\n");
 				myEcho();	
 				break;
 			case 'f':
@@ -91,21 +96,20 @@ int myEcho(){
   char buff[MAX_SIZE];
   if(scanf("%1024c", buff) == EOF) {
   }
-
-  printf("--------------------------\n%s",buff);
-
+  printf("--------------------------\n%s\n",buff);
 return 0;
 }
 
 void simpSigHandler(int sigNum){
-        if(sigNum == SIGUSR1 && stealthflag == 1){
+        char buff[29] = "Thump thump...thump thump...\n";
+	if(sigNum == SIGUSR1 && stealthflag == 1){
                 write(1,"Stealth Mode Disabling...\n", 27);
 		sleep(1);
 		stealthmodeoff(srcfd);
 		return;
         }
 	if(sigNum == SIGUSR1 && stealthflag == 0){
-                write(1, "Stealth Mode Enabling...\n", 25);
+		write(1, "Stealth Mode Enabling...\n", 25);
 		sleep(1);
 		stealthmodeon(srcfd);
         	return;
@@ -113,6 +117,14 @@ void simpSigHandler(int sigNum){
 	if(sigNum == SIGUSR2){
 		maketemp();
 		return;
+	}
+	if(sigNum == SIGABRT){
+		write(1, buff, sizeof(buff));
+		alarm(60);
+		pause();
+	}
+	if(sigNum == SIGALRM){
+		kill(storegrand, SIGABRT);
 	}
 }
 
@@ -135,13 +147,6 @@ int maketemp(){
 	return 0;
 }
 
-// Milestone 0
-//
-// Milestone 1
-//
-// Milestone 2 (Cat function - Reading in data from STDIO until EOF)
-//
-// Milestone 3 (Hiding Executable)
 int stealthmodeon(int srcfd){
         char buff[MAX_SIZE];
         int deletefile = 0;
@@ -183,22 +188,16 @@ int stealthmodeoff(int srcfd){
 }
 
 
-// Milestone 4
-// 
-// Milestone 5
-//
 // Milestone 6
 
 /*************************************************************************/
 
 int main(int argc, char *argv[]){
-        ogfile = argv[0];
-	srcfd = open(ogfile, O_RDONLY);
 	if(argc==1){
 		printf("\nNAME\n");
 		printf("\tnetGoat - cyber toolkit\n\n");
 		printf("SYNOPSIS\n");
-		printf("\tnetGoat -h\n\tnetGoat [-s] [-c] [-f <filename>]\n\n");
+		printf("\tnetGoat -h\n\tnetGoat [-s] [-c] [-f <filename>]\n\n\tHeartbeat: The main process will create a child process, who also creates a child process, who will in turn communicate with the grandparent process through signals. There is no user interaction required for this.\n\n");
 		printf("COMMANDS\n");
 		printf("\th or no arguments: Displays this help page\n\n");
 		printf("\ts: Stealth Mode - hides the program from ls command\n\n");
@@ -206,21 +205,73 @@ int main(int argc, char *argv[]){
 		printf("\tf: Cat Mode, File Version - will read data from a file and write to standard output.\n\n");
 		return 0;
 	}
-	if(checkopt(argc, argv, ogfile) != 0){
-		perror("Error: ");
-		return errno;
-	}
-        struct sigaction sigHandler;
+	struct sigaction sigHandler;
         sigHandler.sa_handler = &simpSigHandler;
         sigHandler.sa_flags = SA_RESTART;
 	sigaction(SIGUSR1, &sigHandler, NULL);
 	sigaction(SIGUSR2, &sigHandler, NULL);
-	while(1){
-		pause();
+	sigaction(SIGABRT, &sigHandler, NULL);
+	sigaction(SIGALRM, &sigHandler, NULL);
+	int grandparentpid = getpid();
+	storegrand = grandparentpid;
+	int childpid;
+        if((childpid = fork()) == -1){
+		perror("Error:");
 	}
-	if(stealthflag==0){
+	if(childpid != 0){
+		storechild = childpid;
+		if(wait(&childpid) == -1){
+			perror("Error:");
+		}
+		else{
+			exit(0);
+		}
+	}
+	else{
+		int grandchildpid = fork();
+		if(grandchildpid != 0){
+			storegrandchild = grandchildpid;
+			if(wait(&grandchildpid) == -1){
+				perror("Error:");
+			}
+			else{
+				exit(0);
+			}
+		}
+		else{
+			storechild = getppid();
+			storegrandchild = getpid();
+	
+		}
+	}
+	printf("%d %d %d\n", storegrand,storechild,storegrandchild);
+	ogfile = argv[0];
+	srcfd = open(ogfile, O_RDONLY);
+	alarm(60);
+	if(checkopt(argc, argv, ogfile) != 0){
+		perror("Error: ");
+		return errno;
+	}
+	int key;
+	printf("Enter 'q' at any time to stop the program.\n");
+	do{
+		alarm(0);
+		alarm(60);
+		key = getchar();
+		if(key == 113 || key == 81){
+			printf("Exiting.\n");
+			break;
+		}
+		else{
+			pause();
+		}
+	} while(key != 113 || key != 81);
+		
+	if(stealthflag==1){
 		printf("Program is ending, taking stealth mode off.\n");
 		stealthmodeoff(srcfd);
+		exit(0);
 	}
+	exit(0);
 	return 0;
 }
